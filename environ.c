@@ -48,7 +48,7 @@ static char **parse_line(const char *line, const Specifier *table, char **env)
 static int parse_config(const char *filename, const Specifier *table, char ***_ret)
 {
     _cleanup_fclose_ FILE *fp = fopen(filename, "re");
-    if (fp == NULL)
+    if (!fp)
         return -1;
 
     while (!feof(fp)) {
@@ -86,7 +86,7 @@ static int load_config(char ***_ret, const Specifier *table, const char *root, .
 
 static int load_dir(char ***_ret, const Specifier *table, const char *root)
 {
-    DIR *dir = opendir(root);
+    _cleanup_closedir_ DIR *dir = opendir(root);
     if (!dir) {
         if (errno == ENOENT)
             return 0;

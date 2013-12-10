@@ -21,16 +21,20 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+#include <dirent.h>
 
 #define _unused_          __attribute__((unused))
 #define _noreturn_        __attribute__((noreturn))
 #define _printf_(a,b)     __attribute__((format (printf, a, b)))
 #define _cleanup_(x)      __attribute__((cleanup(x)))
-#define _cleanup_free_    _cleanup_(freep)
-#define _cleanup_fclose_  _cleanup_(fclosep)
+
+#define _cleanup_free_      _cleanup_(freep)
+#define _cleanup_fclose_    _cleanup_(fclosep)
+#define _cleanup_closedir_  _cleanup_(closedirp)
 
 static inline void freep(void *p) { free(*(void **)p); }
 static inline void fclosep(FILE **fp) { if (*fp) fclose(*fp); }
+static inline void closedirp(DIR **dp) { if (*dp) closedir(*dp); }
 
 static inline bool streq(const char *s1, const char *s2) { return strcmp(s1, s2) == 0; }
 static inline bool strneq(const char *s1, const char *s2, size_t n) { return strncmp(s1, s2, n) == 0; }
