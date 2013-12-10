@@ -6,7 +6,7 @@ WIP alternative to pam_env.so. Hopefully can replace the reliance on
 Reads the following files and merges them down into (hopefully) a full
 environment:
 
-1. `$XDG_CONFIG_DIR/path.conf` or `/etc/locale.conf` to load the
+1. `$XDG_CONFIG_DIR/path.conf` or `/etc/path.conf` to load the
    preferred path.
 2. `$XDG_CONFIG_DIR/locale.conf` or `/etc/locale.conf` to load the
    preferred locale
