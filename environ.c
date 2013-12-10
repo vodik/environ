@@ -21,6 +21,7 @@
 #include <string.h>
 #include <errno.h>
 #include <err.h>
+#include <dirent.h>
 #include <assert.h>
 #include <unistd.h>
 #include <pwd.h>
@@ -83,6 +84,35 @@ static int load_config(char ***_ret, const Specifier *table, const char *root, .
     return parse_config(path, table, _ret);
 }
 
+static int load_dir(char ***_ret, const Specifier *table, const char *root)
+{
+    DIR *dir = opendir(root);
+    if (!dir) {
+        if (errno == ENOENT)
+            return 0;
+        return -errno;
+    }
+
+    for (;;) {
+        struct dirent *de, buf;
+        int r;
+
+        r = readdir_r(dir, &buf, &de);
+        if (r != 0)
+            return -r;
+
+        if (!de)
+            break;
+
+        if (de->d_name[0] == '.')
+            continue;
+
+        load_config(_ret, table, root, de->d_name, NULL);
+    }
+
+    return 0;
+}
+
 int main(void)
 {
     _cleanup_free_ char **env = calloc(sizeof(char *), 100);
@@ -111,6 +141,8 @@ int main(void)
 
     if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
         load_config(&env, table, "/etc/locale.conf", NULL);
+
+    load_dir(&env, table, "/etc/env.d");
 
     load_config(&env, table, get_home_dir(), ".pam_environment", NULL);
 
