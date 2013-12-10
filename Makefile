@@ -7,7 +7,7 @@ CFLAGS := -std=c99 \
 PREFIX = /usr
 
 all: environ
-environ: environ.o specifier.o env.o
+environ: environ.o specifier.o env.o util.o
 
 clean:
 	${RM} environ *.o

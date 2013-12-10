@@ -27,9 +27,9 @@
 #include "env.h"
 #include "util.h"
 
-int specifier_user_pwd(char specifier, void _unused_ *data, void *userdata, char **ret)
+int specifier_user_pwd(char specifier, void *data, void _unused_ *userdata, char **ret)
 {
-    struct passwd *pwd = userdata;
+    struct passwd *pwd = data;
     char *n = NULL;
 
     switch (specifier) {
