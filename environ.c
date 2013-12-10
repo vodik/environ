@@ -30,19 +30,24 @@
 
 int main(void)
 {
+    struct passwd *pwd = getpwuid(getuid());
+
     const Specifier table[] = {
         { 'p', specifier_string,   getenv("PATH") },
-        { 'u', specifier_user_pwd, NULL },
-        { 's', specifier_user_pwd, NULL },
-        { 'h', specifier_user_pwd, NULL },
+        { 'u', specifier_user_pwd, pwd },
+        { 's', specifier_user_pwd, pwd },
+        { 'h', specifier_user_pwd, pwd },
         { 0, NULL, NULL }
     };
 
     char **env = calloc(sizeof(char *), 100);
 
+    _cleanup_free_ char *pam_env;
+    asprintf(&pam_env, "%s/.pam_environment", pwd->pw_dir);
+
     size_t len = 0;
     ssize_t nbytes_r;
-    _cleanup_fclose_ FILE *fp = fopen("/home/simon/.pam_environment", "r");
+    _cleanup_fclose_ FILE *fp = fopen(pam_env, "r");
     _cleanup_free_ char *line = NULL;
 
     if (fp == NULL)

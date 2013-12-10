@@ -29,8 +29,7 @@
 
 int specifier_user_pwd(char specifier, void _unused_ *data, void *userdata, char **ret)
 {
-    uid_t *uid = userdata;
-    struct passwd *pwd = getpwuid(*uid);
+    struct passwd *pwd = userdata;
     char *n = NULL;
 
     switch (specifier) {
