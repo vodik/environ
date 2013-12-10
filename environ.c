@@ -30,6 +30,9 @@
 #include "specifier.h"
 #include "util.h"
 
+static const char *default_path = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin";
+static const char *default_locale = "LANG=C";
+
 static char **parse_line(const char *line, const Specifier *table, char **env)
 {
     _cleanup_free_ char *value = NULL;
@@ -52,7 +55,7 @@ static int parse_config(const char *filename, const Specifier *table, char ***_r
             if (feof(fp))
                 break;
 
-            warn("Failed to read configuration file '%s'", filename);
+            warn("failed to read configuration file '%s'", filename);
             return -errno;
         }
 
@@ -96,6 +99,9 @@ int main(void)
         { 'h', specifier_user_pwd, pwd },
         { 0, NULL, NULL }
     };
+
+    // Seed with default path and locale
+    env_append(env, (const char *[]){ default_path, default_locale, NULL });
 
     // Merge the existing environment in with the working set
     /* env_append(env, (const char **)environ); */
