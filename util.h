@@ -36,6 +36,6 @@ static inline bool streq(const char *s1, const char *s2) { return strcmp(s1, s2)
 static inline bool strneq(const char *s1, const char *s2, size_t n) { return strncmp(s1, s2, n) == 0; }
 static inline const char* strempty(const char *s) { return s ? s : ""; }
 
-char *truncate_nl(char *s);
+char *truncate_to(char *s, const char *term);
 char *strappend(const char *s, const char *suffix);
 char *strnappend(const char *s, const char *suffix, size_t b);

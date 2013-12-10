@@ -30,12 +30,6 @@
 #include "specifier.h"
 #include "util.h"
 
-static char *truncate_comment(char *s)
-{
-    s[strcspn(s, "#")] = 0;
-    return s;
-}
-
 static char **parse_line(const char *line, const Specifier *table, char **env)
 {
     _cleanup_free_ char *value = NULL;
@@ -51,8 +45,6 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
     if (fp == NULL)
         err(EXIT_FAILURE, "failed to open %s", filename);
 
-    unsigned line = 0;
-
     while (!feof(fp)) {
         char p[LINE_MAX];
 
@@ -64,10 +56,7 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
             return -errno;
         }
 
-        truncate_nl(p);
-        printf("LINE %02d: %s\n", ++line, p);
-
-        truncate_comment(p);
+        truncate_to(p, "#\r\n");
         if (!*p)
             continue;
 
