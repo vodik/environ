@@ -30,8 +30,10 @@
 #include "specifier.h"
 #include "util.h"
 
-static const char *default_path = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin";
-static const char *default_locale = "LANG=C";
+static const char *default_env[] = {
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin",
+    "LANG=C"
+};
 
 static char **parse_line(const char *line, const Specifier *table, char **env)
 {
@@ -101,10 +103,11 @@ int main(void)
     };
 
     // Seed with default path and locale
-    env_append(env, (const char *[]){ default_path, default_locale, NULL });
-
-    // Merge the existing environment in with the working set
+    env_append(env, default_env);
     /* env_append(env, (const char **)environ); */
+
+    if (load_config(&env, table, get_user_config_dir(), "path.conf", NULL) < 0)
+        load_config(&env, table, "/etc/path.conf", NULL);
 
     if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
         load_config(&env, table, "/etc/locale.conf", NULL);
