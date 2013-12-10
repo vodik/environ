@@ -39,11 +39,13 @@ static char **parse_line(const char *line, const Specifier *table, char **env)
     return env;
 }
 
-static int config_parse(const char *filename, const Specifier *table, char ***_ret)
+static int parse_config(const char *filename, const Specifier *table, char ***_ret)
 {
     _cleanup_fclose_ FILE *fp = fopen(filename, "re");
-    if (fp == NULL)
-        err(EXIT_FAILURE, "failed to open %s", filename);
+    if (fp == NULL) {
+        warn("failed to open %s", filename);
+        return 0;
+    }
 
     while (!feof(fp)) {
         char p[LINE_MAX];
@@ -68,7 +70,12 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
 
 int main(void)
 {
+    char *config;
     _cleanup_free_ char **env = calloc(sizeof(char *), 100);
+
+    printf("home dir:        %s\n", get_home_dir());
+    printf("user config dir: %s\n\n", get_user_config_dir());
+
     struct passwd *pwd = getpwuid(getuid());
     if (!pwd)
         err(EXIT_FAILURE, "failed to get passwd entry for user");
@@ -81,10 +88,15 @@ int main(void)
         { 0, NULL, NULL }
     };
 
-    _cleanup_free_ char *pam_env;
-    asprintf(&pam_env, "%s/.pam_environment", pwd->pw_dir);
+    config = joinpath(get_user_config_dir(), "locale.conf", NULL);
+    parse_config(config, table, &env);
+    free(config);
 
-    config_parse(pam_env, table, &env);
+    parse_config("/etc/locale.conf", table, &env);
+
+    config = joinpath(get_home_dir(), ".pam_environment", NULL);
+    parse_config(config, table, &env);
+    free(config);
 
     char **e = env;
     for (; *e; ++e) {
