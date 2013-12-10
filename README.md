@@ -10,9 +10,10 @@ environment:
    preferred path.
 2. `$XDG_CONFIG_DIR/locale.conf` or `/etc/locale.conf` to load the
    preferred locale.
-3. Load every file inside `/etc/env.d`.
-4. ???
-5. `$HOME/.pam_environment` (for legacy support).
+3. Load every file inside `/usr/lib/env.d`.
+4. Load every file inside `/etc/env.d`.
+5. ???
+6. `$HOME/.pam_environment` (for legacy support).
 
 ### Substition
 

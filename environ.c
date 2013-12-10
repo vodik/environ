@@ -142,6 +142,7 @@ int main(void)
     if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
         load_config(&env, table, "/etc/locale.conf", NULL);
 
+    load_dir(&env, table, "/usr/lib/env.d");
     load_dir(&env, table, "/etc/env.d");
 
     load_config(&env, table, get_home_dir(), ".pam_environment", NULL);
