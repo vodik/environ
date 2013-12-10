@@ -33,7 +33,7 @@
 static char **parse_line(const char *line, const Specifier *table, char **env)
 {
     _cleanup_free_ char *value = NULL;
-    specifier_printf(line, table, NULL, environ, &value);
+    specifier_printf(line, table, NULL, env, &value);
 
     env_append(env, (const char *[]){ value, NULL });
     return env;
@@ -87,6 +87,9 @@ int main(void)
         { 'h', specifier_user_pwd, pwd },
         { 0, NULL, NULL }
     };
+
+    // Merge the existing environment in with the working set
+    /* env_append(env, (const char **)environ); */
 
     config = joinpath(get_user_config_dir(), "locale.conf", NULL);
     parse_config(config, table, &env);
