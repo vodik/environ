@@ -41,5 +41,7 @@ char *strappend(const char *s, const char *suffix);
 char *strnappend(const char *s, const char *suffix, size_t b);
 
 char *joinpath(const char *root, ...);
+char *joinpath_ap(const char *root, va_list ap);
+
 const char *get_home_dir(void);
 const char *get_user_config_dir(void);

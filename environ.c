@@ -42,10 +42,8 @@ static char **parse_line(const char *line, const Specifier *table, char **env)
 static int parse_config(const char *filename, const Specifier *table, char ***_ret)
 {
     _cleanup_fclose_ FILE *fp = fopen(filename, "re");
-    if (fp == NULL) {
-        warn("failed to open %s", filename);
-        return 0;
-    }
+    if (fp == NULL)
+        return -1;
 
     while (!feof(fp)) {
         char p[LINE_MAX];
@@ -68,9 +66,20 @@ static int parse_config(const char *filename, const Specifier *table, char ***_r
     return 0;
 }
 
+static int load_config(char ***_ret, const Specifier *table, const char *root, ...)
+{
+    va_list ap;
+    _cleanup_free_ char *path;
+
+    va_start(ap, root);
+    path = joinpath_ap(root, ap);
+    va_end(ap);
+
+    return parse_config(path, table, _ret);
+}
+
 int main(void)
 {
-    char *config;
     _cleanup_free_ char **env = calloc(sizeof(char *), 100);
 
     printf("home dir:        %s\n", get_home_dir());
@@ -91,15 +100,10 @@ int main(void)
     // Merge the existing environment in with the working set
     /* env_append(env, (const char **)environ); */
 
-    config = joinpath(get_user_config_dir(), "locale.conf", NULL);
-    parse_config(config, table, &env);
-    free(config);
+    if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
+        load_config(&env, table, "/etc/locale.conf", NULL);
 
-    parse_config("/etc/locale.conf", table, &env);
-
-    config = joinpath(get_home_dir(), ".pam_environment", NULL);
-    parse_config(config, table, &env);
-    free(config);
+    load_config(&env, table, get_home_dir(), ".pam_environment", NULL);
 
     char **e = env;
     for (; *e; ++e) {

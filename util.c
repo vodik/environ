@@ -62,7 +62,7 @@ char *truncate_to(char *s, const char *term)
 }
 
 /* loosely adopted from systemd shared/util.c */
-static char *joinpath_ap(const char *root, va_list ap)
+char *joinpath_ap(const char *root, va_list ap)
 {
     size_t len;
     char *ret, *p;
