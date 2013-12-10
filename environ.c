@@ -30,6 +30,7 @@
 
 int main(void)
 {
+    _cleanup_free_ char **env = calloc(sizeof(char *), 100);
     struct passwd *pwd = getpwuid(getuid());
 
     const Specifier table[] = {
@@ -40,18 +41,16 @@ int main(void)
         { 0, NULL, NULL }
     };
 
-    char **env = calloc(sizeof(char *), 100);
-
     _cleanup_free_ char *pam_env;
     asprintf(&pam_env, "%s/.pam_environment", pwd->pw_dir);
 
-    size_t len = 0;
-    ssize_t nbytes_r;
     _cleanup_fclose_ FILE *fp = fopen(pam_env, "r");
-    _cleanup_free_ char *line = NULL;
-
     if (fp == NULL)
         exit(EXIT_FAILURE);
+
+    ssize_t nbytes_r;
+    size_t len = 0;
+    _cleanup_free_ char *line = NULL;
 
     while ((nbytes_r = getline(&line, &len, fp)) != -1) {
         if (!line || *line == '#' || *line == '\n')
@@ -60,7 +59,7 @@ int main(void)
         line[nbytes_r - 1] = 0;
 
         _cleanup_free_ char *value = NULL;
-        specifier_printf(line, table, &(uid_t){ 1000 }, env, &value);
+        specifier_printf(line, table, NULL, environ, &value);
 
         env_append(env, (const char *[]){ value, NULL });
     }
@@ -70,6 +69,4 @@ int main(void)
         printf("%s\n", *e);
         free(*e);
     }
-
-    free(env);
 }
