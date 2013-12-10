@@ -84,7 +84,7 @@ char *joinpath_ap(const char *root, va_list ap)
         len += temp_len;
     }
 
-    ret = malloc(len);
+    ret = malloc(len + 1);
     if (ret) {
         p = stpcpy(ret, root);
         while ((temp = va_arg(aq, const char *))) {
