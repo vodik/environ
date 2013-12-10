@@ -23,3 +23,7 @@ Support for variable substitution and specifiers:
 
 `%h` expands to the user's home directory, `%(PATH)` expands to the
 existing value for `PATH`.
+
+### Open Questions
+
+- How to handle perl?
