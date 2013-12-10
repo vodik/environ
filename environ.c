@@ -51,16 +51,12 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
     if (fp == NULL)
         err(EXIT_FAILURE, "failed to open %s", filename);
 
-    /* _cleanup_free_ char *section = NULL, *continuation = NULL; */
-    _cleanup_free_ char *continuation = NULL;
-    unsigned line = 0; //, section_line = 0;
-    /* int r; */
+    unsigned line = 0;
 
     while (!feof(fp)) {
-        char l[LINE_MAX], *p, *c = NULL, *e;
-        bool escaped = false;
+        char p[LINE_MAX];
 
-        if (!fgets(l, sizeof(l), fp)) {
+        if (!fgets(p, sizeof(p), fp)) {
             if (feof(fp))
                 break;
 
@@ -68,40 +64,7 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
             return -errno;
         }
 
-        truncate_nl(l);
-
-        if (continuation) {
-            c = strappend(continuation, l);
-            if (!c)
-                return -ENOMEM;
-
-            free(continuation);
-            continuation = NULL;
-            p = c;
-        } else
-            p = l;
-
-        for (e = p; *e; e++) {
-            if (escaped)
-                escaped = false;
-            else if (*e == '\\')
-                escaped = true;
-        }
-
-        if (escaped) {
-            *(e-1) = ' ';
-
-            if (c)
-                continuation = c;
-            else {
-                continuation = strdup(l);
-                if (!continuation)
-                    return -ENOMEM;
-            }
-
-            continue;
-        }
-
+        truncate_nl(p);
         printf("LINE %02d: %s\n", ++line, p);
 
         truncate_comment(p);
@@ -109,22 +72,6 @@ static int config_parse(const char *filename, const Specifier *table, char ***_r
             continue;
 
         *_ret = parse_line(p, table, *_ret);
-        /* r = parse_line(unit, */
-        /*                filename, */
-        /*                ++line, */
-        /*                sections, */
-        /*                lookup, */
-        /*                table, */
-        /*                relaxed, */
-        /*                allow_include, */
-        /*                &section, */
-        /*                &section_line, */
-        /*                p, */
-        /*                userdata); */
-        free(c);
-
-        /* if (r < 0) */
-        /*         return r; */
     }
 
     return 0;
