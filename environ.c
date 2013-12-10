@@ -1,4 +1,20 @@
-#define _GNU_SOURCE
+/*
+* This program is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 3 of the License, or
+* (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/>.
+*
+* Copyright (C) Simon Gomizelj, 2013
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -8,204 +24,9 @@
 #include <unistd.h>
 #include <pwd.h>
 
-#define _unused_          __attribute__((unused))
-#define _cleanup_(x)      __attribute__((cleanup(x)))
-
-#define _cleanup_free_    _cleanup_(freep)
-#define _cleanup_fclose_  _cleanup_(fclosep)
-
-static inline void freep(void *p) { free(*(void **)p); }
-static inline void fclosep(FILE **fp) { fclose(*fp); }
-
-static inline bool streq(const char *s1, const char *s2) { return strcmp(s1, s2) == 0; }
-static inline bool strneq(const char *s1, const char *s2, size_t n) { return strncmp(s1, s2, n) == 0; }
-static inline const char* strempty(const char *s) { return s ? s : ""; }
-
-typedef int (*SpecifierCallback)(char specifier, void *data, void *userdata, char **ret);
-
-typedef struct Specifier {
-    const char specifier;
-    const SpecifierCallback lookup;
-    void *data;
-} Specifier;
-
-//{{{ SPECIFIERS
-int specifier_user_pwd(char specifier, void _unused_ *data, void *userdata, char **ret)
-{
-    uid_t *uid = userdata;
-    struct passwd *pwd = getpwuid(*uid);
-    char *n = NULL;
-
-    switch (specifier) {
-    case 'u':
-        n = strdup(pwd->pw_name);
-        break;
-    case 's':
-        n = strdup(pwd->pw_shell);
-        break;
-    case 'h':
-        n = strdup(pwd->pw_dir);
-        break;
-    default:
-        return -EINVAL;
-    }
-
-    if (!n)
-        return -ENOMEM;
-
-    *ret = n;
-    return 0;
-}
-
-int specifier_string(char _unused_ specifier, void *data, void _unused_ *userdata, char **ret)
-{
-    char *n;
-
-    n = strdup(strempty(data));
-    if (!n)
-        return -ENOMEM;
-
-    *ret = n;
-    return 0;
-}
-//}}}
-
-static size_t env_key_length(const char *key)
-{
-    size_t n = strcspn(key, "=");
-    if (key[n] == '=')
-        n++;
-    return n;
-}
-
-/*
- * Generic infrastructure for replacing %x style specifiers in
- * strings. Will call a callback for each replacement.
- *
- */
-int specifier_printf(const char *text, const Specifier table[], void *userdata, char **env, char **_ret)
-{
-    char *ret, *t;
-    const char *f;
-    bool percent = false;
-    size_t l;
-    int r;
-
-    assert(text);
-    assert(table);
-
-    l = strlen(text);
-    ret = malloc(l+1);
-    if (!ret)
-        return -ENOMEM;
-
-    t = ret;
-
-    for (f = text; *f && *f != '='; f++, l--)
-        *(t++) = *f;
-
-    for (; *f; f++, l--) {
-
-        if (percent) {
-            _cleanup_free_ char *w = NULL;
-
-            if (*f == '%')
-                *(t++) = '%';
-            else if (*f == '(') {
-                char *end = strchr(f, ')');
-
-                if (end) {
-                    char **e;
-                    size_t len = end - f - 1;
-                    const char *key = f + 1;
-
-                    for (e = env; *e; ++e) {
-                        if (strneq(*e, key, len)) {
-                            size_t key_len = env_key_length(*e);
-                            w = strdup(&(*e)[key_len]);
-                        }
-                    }
-
-                    f += len + 1;
-                } else {
-                    *(t++) = '%';
-                    *(t++) = '(';
-                }
-            } else {
-                const Specifier *i;
-
-                for (i = table; i->specifier; i++)
-                    if (i->specifier == *f)
-                        break;
-
-                if (i->lookup) {
-                    r = i->lookup(i->specifier, i->data, userdata, &w);
-                    if (r < 0) {
-                        free(ret);
-                        return r;
-                    }
-                } else {
-                    *(t++) = '%';
-                    *(t++) = *f;
-                }
-            }
-
-            if (w) {
-                char *n;
-                size_t k, j;
-
-                j = t - ret;
-                k = strlen(w);
-
-                n = malloc(j + k + l + 1);
-                if (!n) {
-                    free(ret);
-                    return -ENOMEM;
-                }
-
-                memcpy(n, ret, j);
-                memcpy(n + j, w, k);
-
-                free(ret);
-
-                ret = n;
-                t = n + j + k;
-            }
-
-            percent = false;
-        } else if (*f == '%')
-            percent = true;
-        else
-            *(t++) = *f;
-    }
-
-    *t = 0;
-    *_ret = ret;
-    return 0;
-}
-
-static int env_append(char **env, const char **keys)
-{
-    const char **k;
-
-    for (k = keys; *k; ++k) {
-        size_t n = env_key_length(*k);
-
-        char **e = env;
-        for (; *e; ++e) {
-            if (strneq(*e, *k, n)) {
-                free(*e);
-                *e = strdup(*k);
-                break;
-            }
-        }
-
-        if (!*e)
-            *e = strdup(*k);
-    }
-
-    return 0;
-}
+#include "env.h"
+#include "specifier.h"
+#include "util.h"
 
 int main(void)
 {
