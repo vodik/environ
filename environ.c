@@ -51,6 +51,8 @@ static int parse_config(const char *filename, const Specifier *table, char ***_r
     if (!fp)
         return -1;
 
+    printf("> loading: %s\n", filename);
+
     while (!feof(fp)) {
         char p[LINE_MAX];
 
@@ -84,9 +86,16 @@ static int load_config(char ***_ret, const Specifier *table, const char *root, .
     return parse_config(path, table, _ret);
 }
 
-static int load_dir(char ***_ret, const Specifier *table, const char *root)
+static int load_dir(char ***_ret, const Specifier *table, const char *root, ...)
 {
-    _cleanup_closedir_ DIR *dir = opendir(root);
+    va_list ap;
+    _cleanup_free_ char *path;
+
+    va_start(ap, root);
+    path = joinpath_ap(root, ap);
+    va_end(ap);
+
+    _cleanup_closedir_ DIR *dir = opendir(path);
     if (!dir) {
         if (errno == ENOENT)
             return 0;
@@ -107,18 +116,23 @@ static int load_dir(char ***_ret, const Specifier *table, const char *root)
         if (de->d_name[0] == '.')
             continue;
 
-        load_config(_ret, table, root, de->d_name, NULL);
+        load_config(_ret, table, path, de->d_name, NULL);
     }
 
     return 0;
 }
+
+/* static int cstr_cmp(const void *a, const void *b) */
+/* { */
+/*     return strcmp(*(const char **)a, *(const char **)b); */
+/* } */
 
 int main(void)
 {
     _cleanup_free_ char **env = calloc(sizeof(char *), 100);
 
     printf("home dir:        %s\n", get_home_dir());
-    printf("user config dir: %s\n\n", get_user_config_dir());
+    printf("user config dir: %s\n", get_user_config_dir());
 
     struct passwd *pwd = getpwuid(getuid());
     if (!pwd)
@@ -142,13 +156,20 @@ int main(void)
     if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
         load_config(&env, table, "/etc/locale.conf", NULL);
 
-    load_dir(&env, table, "/usr/lib/env.d");
-    load_dir(&env, table, "/etc/env.d");
+    load_config(&env, table, "/etc/environment", NULL);
+
+    load_dir(&env, table, "/usr/lib/env.d", NULL);
+    load_dir(&env, table, "/etc/env.d", NULL);
+    load_dir(&env, table, get_user_config_dir(), "env.d", NULL);
 
     load_config(&env, table, get_home_dir(), ".pam_environment", NULL);
 
-    char **e = env;
-    for (; *e; ++e) {
+    /* size_t n = 0; */
+    char **e;
+
+    /* for (e = env; *e; ++e, ++n) */
+    /* qsort(env, n, sizeof(char *), cstring_cmp); */
+    for (e = env; *e; ++e) {
         printf("%s\n", *e);
         free(*e);
     }
