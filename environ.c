@@ -134,6 +134,8 @@ int main(void)
 
     printf("home dir:        %s\n", get_home_dir());
     printf("user config dir: %s\n", get_user_config_dir());
+    printf("user data dir:   %s\n", get_user_data_dir());
+    printf("user cache dir:  %s\n", get_user_cache_dir());
 
     struct passwd *pwd = getpwuid(getuid());
     if (!pwd)

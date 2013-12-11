@@ -27,6 +27,7 @@
 #define _noreturn_        __attribute__((noreturn))
 #define _printf_(a,b)     __attribute__((format (printf, a, b)))
 #define _cleanup_(x)      __attribute__((cleanup(x)))
+#define _destructor_      __attribute__((destructor))
 
 #define _cleanup_free_      _cleanup_(freep)
 #define _cleanup_fclose_    _cleanup_(fclosep)
@@ -49,3 +50,5 @@ char *joinpath_ap(const char *root, va_list ap);
 
 const char *get_home_dir(void);
 const char *get_user_config_dir(void);
+const char *get_user_data_dir(void);
+const char *get_user_cache_dir(void);
