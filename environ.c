@@ -123,6 +123,21 @@ static int load_dir(char ***_ret, const Specifier *table, const char *root, ...)
     return 0;
 }
 
+static void env_set_xdg_base_spec(char **env) {
+    _cleanup_free_ char *xdg_config_home, *xdg_data_home, *xdg_cache_home;
+
+    asprintf(&xdg_config_home, "XDG_CONFIG_HOME=%s", get_user_config_dir());
+    asprintf(&xdg_data_home,   "XDG_DATA_HOME=%s",   get_user_data_dir());
+    asprintf(&xdg_cache_home,  "XDG_CACHE_HOME=%s",  get_user_cache_dir());
+
+    env_append(env, (const char *[]){
+        xdg_config_home,
+        xdg_data_home,
+        xdg_cache_home,
+        NULL
+    });
+}
+
 /* static int cstr_cmp(const void *a, const void *b) */
 /* { */
 /*     return strcmp(*(const char **)a, *(const char **)b); */
@@ -161,18 +176,20 @@ int main(void)
         load_config(&env, table, "/etc/locale.conf", NULL);
 
     load_config(&env, table, "/etc/environment", NULL);
-
     load_dir(&env, table, "/usr/lib/env.d", NULL);
     load_dir(&env, table, "/etc/env.d", NULL);
-    load_dir(&env, table, get_user_config_dir(), "env.d", NULL);
 
+    env_set_xdg_base_spec(env);
+
+    load_config(&env, table, get_user_config_dir(), "environment", NULL);
+    load_dir(&env, table, get_user_config_dir(), "env.d", NULL);
     load_config(&env, table, get_home_dir(), ".pam_environment", NULL);
 
-    /* size_t n = 0; */
     char **e;
+    /* size_t n = 0; */
 
     /* for (e = env; *e; ++e, ++n) */
-    /* qsort(env, n, sizeof(char *), cstring_cmp); */
+    /* qsort(env, n, sizeof(char *), cstr_cmp); */
     for (e = env; *e; ++e) {
         printf("%s\n", *e);
         free(*e);
