@@ -144,6 +144,7 @@ int main(void)
     const Specifier table[] = {
         { 'p', specifier_string,   getenv("PATH") },
         { 'u', specifier_user_pwd, pwd },
+        { 'U', specifier_user_pwd, pwd },
         { 's', specifier_user_pwd, pwd },
         { 'h', specifier_user_pwd, pwd },
         { 0, NULL, NULL }

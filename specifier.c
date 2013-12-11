@@ -36,6 +36,9 @@ int specifier_user_pwd(char specifier, void *data, void _unused_ *userdata, char
     case 'u':
         n = strdup(pwd->pw_name);
         break;
+    case 'U':
+        asprintf(&n, "%d", pwd->pw_uid);
+        break;
     case 's':
         n = strdup(pwd->pw_shell);
         break;
