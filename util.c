@@ -156,7 +156,7 @@ const char *get_user_cache_dir(void)
 }
 
 #ifdef VALGRIND
-_destructor_ static void free_dirs(void)
+static _destructor_ void free_dirs(void)
 {
     free(home_dir_cache);
     free(user_config_dir_cache);
