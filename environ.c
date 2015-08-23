@@ -34,7 +34,8 @@
 
 static const char *default_env[] = {
     "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin",
-    "LANG=C"
+    "LANG=C",
+    NULL
 };
 
 static char **parse_line(const char *line, const Specifier *table, char **env)
