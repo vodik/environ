@@ -30,6 +30,7 @@
 
 #include "env.h"
 #include "specifier.h"
+#include "xdg.h"
 #include "util.h"
 
 static const char *default_env[] = {
