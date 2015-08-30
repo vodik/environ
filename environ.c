@@ -169,10 +169,10 @@ int main(void)
 
     // Seed with default path and locale
     env_append(env, default_env);
-    /* env_append(env, (const char **)environ); */
+    // env_append(env, (const char **)environ);
 
-    if (load_config(&env, table, get_user_config_dir(), "path.conf", NULL) < 0)
-        load_config(&env, table, "/etc/path.conf", NULL);
+    /* if (load_config(&env, table, get_user_config_dir(), "path.conf", NULL) < 0) */
+    /*     load_config(&env, table, "/etc/path.conf", NULL); */
 
     if (load_config(&env, table, get_user_config_dir(), "locale.conf", NULL) < 0)
         load_config(&env, table, "/etc/locale.conf", NULL);

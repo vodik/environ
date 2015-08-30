@@ -68,6 +68,41 @@ int specifier_string(char _unused_ specifier, void *data, void _unused_ *userdat
     return 0;
 }
 
+static char *env_lookup(char **env, const char *key, size_t len)
+{
+    char **e;
+
+    for (e = env; *e; ++e) {
+        if (strneq(*e, key, len)) {
+            size_t key_len = env_key_length(*e);
+            return strdup(&(*e)[key_len]);
+        }
+    }
+
+    return NULL;
+}
+
+static char *specifier_lookup(const Specifier table[], void  *userdata, char specifier)
+{
+    int r;
+    const Specifier *i;
+    char *w = NULL;
+
+    for (i = table; i->specifier; i++) {
+        if (i->specifier == specifier)
+            break;
+    }
+
+    if (i->lookup) {
+        r = i->lookup(i->specifier, i->data, userdata, &w);
+        if (r < 0) {
+            return NULL;
+        }
+    }
+
+    return w;
+}
+
 /*
  * Generic infrastructure for replacing %x style specifiers in
  * strings. Will call a callback for each replacement.
@@ -78,63 +113,52 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
     char *ret, *t;
     const char *f;
     bool percent = false;
-    size_t l;
-    int r;
 
     assert(text);
     assert(table);
 
-    l = strlen(text);
-    ret = malloc(l+1);
+    size_t text_len = strlen(text);
+    ret = malloc(text_len + 1);
     if (!ret)
         return -ENOMEM;
 
-    t = ret;
+    size_t equals = strcspn(text, "=");
+    if (text[equals] != '=') {
+        *_ret = NULL;
+        free(ret);
+        return -EINVAL;
+    } else {
+        ++equals;
 
-    for (f = text; *f && *f != '='; f++, l--)
-        *(t++) = *f;
+        memcpy(ret, text, equals);
+        t = &ret[equals];
+        f = &text[equals];
+        text_len -= equals;
+    }
 
-    for (; *f; f++, l--) {
-
+    for (; *f; f++, text_len--) {
         if (percent) {
             _cleanup_free_ char *w = NULL;
 
-            if (*f == '%')
-                *(t++) = '%';
+            if (*f == '%') {
+                *t++ = '%';
+            }
             else if (*f == '(') {
                 char *end = strchr(f, ')');
 
                 if (end) {
-                    char **e;
                     size_t len = end - f - 1;
                     const char *key = f + 1;
-
-                    for (e = env; *e; ++e) {
-                        if (strneq(*e, key, len)) {
-                            size_t key_len = env_key_length(*e);
-                            w = strdup(&(*e)[key_len]);
-                        }
-                    }
+                    w = env_lookup(env, key, len);
 
                     f += len + 1;
                 } else {
-                    *(t++) = '%';
-                    *(t++) = '(';
+                    t++[0] = '%';
+                    t++[0] = '(';
                 }
             } else {
-                const Specifier *i;
-
-                for (i = table; i->specifier; i++)
-                    if (i->specifier == *f)
-                        break;
-
-                if (i->lookup) {
-                    r = i->lookup(i->specifier, i->data, userdata, &w);
-                    if (r < 0) {
-                        free(ret);
-                        return r;
-                    }
-                } else {
+                w = specifier_lookup(table, userdata, *f);
+                if (!w) {
                     *(t++) = '%';
                     *(t++) = *f;
                 }
@@ -147,7 +171,7 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
                 j = t - ret;
                 k = strlen(w);
 
-                n = malloc(j + k + l + 1);
+                n = malloc(j + k + text_len + 1);
                 if (!n) {
                     free(ret);
                     return -ENOMEM;
