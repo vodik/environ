@@ -144,14 +144,11 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
                 *t++ = '%';
             }
             else if (*f == '(') {
-                char *end = strchr(f, ')');
+                size_t end = strcspn(f, ")");
 
-                if (end) {
-                    size_t len = end - f - 1;
-                    const char *key = f + 1;
-                    w = env_lookup(env, key, len);
-
-                    f += len + 1;
+                if (f[end] == ')') {
+                    w = env_lookup(env, &f[1], end - 1);
+                    f += end;
                 } else {
                     t++[0] = '%';
                     t++[0] = '(';
