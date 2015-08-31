@@ -27,6 +27,11 @@
 #include "env.h"
 #include "util.h"
 
+static inline size_t next_power(size_t x)
+{
+    return 1UL << (64 - __builtin_clzl(x - 1));
+}
+
 int specifier_user_pwd(char specifier, void *data, void _unused_ *userdata, char **ret)
 {
     struct passwd *pwd = data;
@@ -82,23 +87,21 @@ static char *env_lookup(char **env, const char *key, size_t len)
     return NULL;
 }
 
-static char *specifier_lookup(const Specifier table[], void  *userdata, char specifier)
+static char *specifier_lookup(const Specifier *table, void  *userdata, char specifier)
 {
-    int r;
     const Specifier *i;
-    char *w = NULL;
 
     for (i = table; i->specifier; i++) {
         if (i->specifier == specifier)
             break;
     }
 
-    if (i->lookup) {
-        r = i->lookup(i->specifier, i->data, userdata, &w);
-        if (r < 0) {
-            return NULL;
-        }
-    }
+    if (!i->lookup)
+        return NULL;
+
+    char *w = NULL;
+    if (i->lookup(i->specifier, i->data, userdata, &w) < 0)
+        return NULL;
 
     return w;
 }
@@ -108,7 +111,7 @@ static char *specifier_lookup(const Specifier table[], void  *userdata, char spe
  * strings. Will call a callback for each replacement.
  *
  */
-int specifier_printf(const char *text, const Specifier table[], void *userdata, char **env, char **_ret)
+int specifier_printf(const char *text, const Specifier *table, void *userdata, char **env, char **_ret)
 {
     char *ret, *t;
     const char *f;
@@ -118,7 +121,9 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
     assert(table);
 
     size_t text_len = strlen(text);
-    ret = malloc(text_len + 1);
+    size_t buf_len = (text_len + 1 < 64) ? 64 : next_power(text_len + 1);
+
+    ret = malloc(buf_len);
     if (!ret)
         return -ENOMEM;
 
@@ -142,8 +147,7 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
 
             if (*f == '%') {
                 *t++ = '%';
-            }
-            else if (*f == '(') {
+            } else if (*f == '(') {
                 size_t end = strcspn(f, ")");
 
                 if (f[end] == ')') {
@@ -168,26 +172,30 @@ int specifier_printf(const char *text, const Specifier table[], void *userdata, 
                 j = t - ret;
                 k = strlen(w);
 
-                n = malloc(j + k + text_len + 1);
-                if (!n) {
-                    free(ret);
-                    return -ENOMEM;
+                /* size_t new_buf_len = j + k + text_len + 1; */
+                if (j + k + text_len + 1 > buf_len) {
+                    buf_len = next_power(j + k + text_len + 1);
+
+                    n = realloc(ret, buf_len);
+                    if (!n) {
+                        free(ret);
+                        return -ENOMEM;
+                    }
+
+                    ret = n;
+                    t = n + j;
                 }
 
-                memcpy(n, ret, j);
-                memcpy(n + j, w, k);
-
-                free(ret);
-
-                ret = n;
-                t = n + j + k;
+                memcpy(t, w, k);
+                t += k;
             }
 
             percent = false;
-        } else if (*f == '%')
+        } else if (*f == '%') {
             percent = true;
-        else
+        } else {
             *(t++) = *f;
+        }
     }
 
     *t = 0;
