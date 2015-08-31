@@ -122,24 +122,20 @@ int specifier_printf(const char *text, const Specifier *table, void *userdata, c
 
     size_t text_len = strlen(text);
     size_t buf_len = (text_len + 1 < 64) ? 64 : next_power(text_len + 1);
+    size_t equals = strcspn(text, "=");
+
+    if (text[equals] != '=')
+        return -EINVAL;
 
     ret = malloc(buf_len);
     if (!ret)
         return -ENOMEM;
 
-    size_t equals = strcspn(text, "=");
-    if (text[equals] != '=') {
-        *_ret = NULL;
-        free(ret);
-        return -EINVAL;
-    } else {
-        ++equals;
-
-        memcpy(ret, text, equals);
-        t = &ret[equals];
-        f = &text[equals];
-        text_len -= equals;
-    }
+    ++equals;
+    memcpy(ret, text, equals);
+    t = &ret[equals];
+    f = &text[equals];
+    text_len -= equals;
 
     for (; *f; f++, text_len--) {
         if (percent) {
