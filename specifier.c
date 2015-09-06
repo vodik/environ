@@ -113,58 +113,52 @@ static char *specifier_lookup(const Specifier *table, void  *userdata, char spec
  */
 int specifier_printf(const char *text, const Specifier *table, void *userdata, char **env, char **_ret)
 {
-    char *ret, *t;
-    const char *f;
-    bool percent = false;
-
     assert(text);
     assert(table);
 
-    size_t text_len = strlen(text);
-    size_t buf_len = (text_len + 1 < 64) ? 64 : next_power(text_len + 1);
-    size_t equals = strcspn(text, "=");
-
-    if (text[equals] != '=')
+    size_t write_pos = strcspn(text, "=");
+    if (text[write_pos] != '=')
         return -EINVAL;
 
-    ret = malloc(buf_len);
+    size_t text_len = strlen(text);
+    size_t buf_len = (text_len + 1 < 64) ? 64 : next_power(text_len + 1);
+
+    char *ret = malloc(buf_len);
     if (!ret)
         return -ENOMEM;
 
-    ++equals;
-    memcpy(ret, text, equals);
-    t = &ret[equals];
-    f = &text[equals];
-    text_len -= equals;
+    ++write_pos;
+    memcpy(ret, text, write_pos);
 
-    for (; *f; f++, text_len--) {
+    size_t read_pos = write_pos;
+    bool percent = false;
+    for (; read_pos < text_len; read_pos++) {
         if (percent) {
             _cleanup_free_ char *payload = NULL;
 
-            if (*f == '%') {
-                *t++ = '%';
-            } else if (*f == '(') {
-                size_t end = strcspn(f, ")");
+            if (text[read_pos] == '%') {
+                ret[write_pos++] = '%';
+            } else if (text[read_pos] == '(') {
+                size_t end = strcspn(&text[read_pos], ")");
 
-                if (f[end] == ')') {
-                    payload = env_lookup(env, &f[1], end - 1);
-                    f += end;
+                if (text[read_pos + end] == ')') {
+                    payload = env_lookup(env, &text[read_pos + 1], end - 1);
+                    read_pos += end;
                 } else {
-                    t++[0] = '%';
-                    t++[0] = '(';
+                    ret[write_pos++] = '%';
+                    ret[write_pos++] = '(';
                 }
             } else {
-                payload  = specifier_lookup(table, userdata, *f);
+                payload = specifier_lookup(table, userdata, text[read_pos]);
                 if (!payload) {
-                    *(t++) = '%';
-                    *(t++) = *f;
+                    ret[write_pos++] = '%';
+                    ret[write_pos++] = text[read_pos];
                 }
             }
 
             if (payload) {
-                size_t offset = t - ret;
                 size_t payload_len = strlen(payload);
-                size_t newlen = offset + payload_len + text_len + 1;
+                size_t newlen = write_pos + payload_len + text_len + 1;
 
                 if (newlen > buf_len) {
                     buf_len = next_power(newlen);
@@ -176,22 +170,21 @@ int specifier_printf(const char *text, const Specifier *table, void *userdata, c
                     }
 
                     ret = temp;
-                    t = temp + offset;
                 }
 
-                memcpy(t, payload, payload_len);
-                t += payload_len;
+                memcpy(&ret[write_pos], payload, payload_len);
+                write_pos += payload_len;
             }
 
             percent = false;
-        } else if (*f == '%') {
+        } else if (text[read_pos] == '%') {
             percent = true;
         } else {
-            *(t++) = *f;
+            ret[write_pos++] = text[read_pos];
         }
     }
 
-    *t = 0;
+    ret[write_pos] = '\0';
     *_ret = ret;
     return 0;
 }
