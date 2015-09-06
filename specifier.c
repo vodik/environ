@@ -139,7 +139,7 @@ int specifier_printf(const char *text, const Specifier *table, void *userdata, c
 
     for (; *f; f++, text_len--) {
         if (percent) {
-            _cleanup_free_ char *w = NULL;
+            _cleanup_free_ char *payload = NULL;
 
             if (*f == '%') {
                 *t++ = '%';
@@ -147,43 +147,40 @@ int specifier_printf(const char *text, const Specifier *table, void *userdata, c
                 size_t end = strcspn(f, ")");
 
                 if (f[end] == ')') {
-                    w = env_lookup(env, &f[1], end - 1);
+                    payload = env_lookup(env, &f[1], end - 1);
                     f += end;
                 } else {
                     t++[0] = '%';
                     t++[0] = '(';
                 }
             } else {
-                w = specifier_lookup(table, userdata, *f);
-                if (!w) {
+                payload  = specifier_lookup(table, userdata, *f);
+                if (!payload) {
                     *(t++) = '%';
                     *(t++) = *f;
                 }
             }
 
-            if (w) {
-                char *n;
-                size_t k, j;
+            if (payload) {
+                size_t offset = t - ret;
+                size_t payload_len = strlen(payload);
+                size_t newlen = offset + payload_len + text_len + 1;
 
-                j = t - ret;
-                k = strlen(w);
+                if (newlen > buf_len) {
+                    buf_len = next_power(newlen);
 
-                /* size_t new_buf_len = j + k + text_len + 1; */
-                if (j + k + text_len + 1 > buf_len) {
-                    buf_len = next_power(j + k + text_len + 1);
-
-                    n = realloc(ret, buf_len);
-                    if (!n) {
+                    char *temp = realloc(ret, buf_len);
+                    if (!temp) {
                         free(ret);
                         return -ENOMEM;
                     }
 
-                    ret = n;
-                    t = n + j;
+                    ret = temp;
+                    t = temp + offset;
                 }
 
-                memcpy(t, w, k);
-                t += k;
+                memcpy(t, payload, payload_len);
+                t += payload_len;
             }
 
             percent = false;
